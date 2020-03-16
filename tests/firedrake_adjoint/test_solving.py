@@ -77,6 +77,25 @@ def test_nonlinear_problem():
     _test_adjoint(J, f)
 
 
+def test_singular_problem_via_variational_solver():
+    """This tests whether nullspace and solver_parameters are passed on in adjoint solves"""
+    mesh = UnitSquareMesh(10, 10)
+    V = FunctionSpace(mesh, "CG", 1)
+    f = Function(V)
+    f.vector()[:] = 1
+    u = Function(V)
+    v = TestFunction(V)
+    nullspace = VectorSpaceBasis(constant=True)
+    solver_parameters = {'ksp_type': 'cg', 'pc_type': 'sor', 'ksp_monitor': None, 'ksp_view': None, 'snes_type': 'ksponly'}
+    def J(f):
+        F = inner(grad(u), grad(v))*dx - f*v*dx
+        problem = NonlinearVariationalProblem(F, u)
+        solver = NonlinearVariationalSolver(problem, solver_parameters=solver_parameters, nullspace=nullspace, transpose_nullspace=nullspace)
+        solver.solve()
+        return assemble(u**2*dx)
+    _test_adjoint(J, f)
+
+
 def test_mixed_boundary():
     mesh = UnitSquareMesh(10,10)
 
