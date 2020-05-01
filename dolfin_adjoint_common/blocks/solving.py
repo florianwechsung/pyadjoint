@@ -206,7 +206,9 @@ class GenericSolveBlock(Block):
             F_form_tmp = self.backend.action(F_form, adj_sol)
             X = self.backend.SpatialCoordinate(c_rep)
             test_function = self.backend.TestFunction(c._ad_function_space())
-            dFdm = self.backend.derivative(-F_form_tmp, X, self.backend.conj(test_function))
+
+            dFdm = self.backend.derivative(-F_form_tmp, X, test_function)
+            dFdm = ufl.algorithms.map_integrands.map_integrands(self.backend.conj, dFdm)
 
             dFdm = self.compat.assemble_adjoint_value(dFdm, **self.assemble_kwargs)
             return dFdm
@@ -387,8 +389,6 @@ class GenericSolveBlock(Block):
             W = c.function_space()
 
         dc = self.backend.TestFunction(W)
-        if isinstance(c, self.compat.MeshType):
-            dc = self.backend.conj(dc)
 
         form_adj = self.backend.action(F_form, adj_sol)
         form_adj2 = self.backend.action(F_form, adj_sol2)
@@ -429,8 +429,7 @@ class GenericSolveBlock(Block):
                 d2Fdm2 += ufl.algorithms.expand_derivatives(self.backend.derivative(dFdm_adj, c2_rep, tlm_input))
 
         hessian_form = ufl.algorithms.expand_derivatives(d2Fdm2 + dFdm_adj2 + d2Fdudm)
-        if not isinstance(c, self.compat.MeshType):
-            hessian_form = ufl.algorithms.map_integrands.map_integrands(self.backend.conj, hessian_form)
+        hessian_form = ufl.algorithms.map_integrands.map_integrands(self.backend.conj, hessian_form)
 
         hessian_output = 0
         if not hessian_form.empty():
