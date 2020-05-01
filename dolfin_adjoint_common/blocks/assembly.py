@@ -53,8 +53,6 @@ class AssembleBlock(Block):
         elif isinstance(c, self.compat.MeshType):
             c_rep = self.backend.SpatialCoordinate(c_rep)
             dc = self.backend.TestFunction(c._ad_function_space())
-            dform = self.backend.derivative(form, c_rep, self.backend.conj(dc))
-            return adj_input * self.compat.assemble_adjoint_value(dform)
 
         dform = self.backend.derivative(form, c_rep, dc)
         dform = ufl.algorithms.map_integrands.map_integrands(self.backend.conj, dform)
@@ -107,16 +105,15 @@ class AssembleBlock(Block):
         elif isinstance(c1, self.compat.MeshType):
             c1_rep = self.backend.SpatialCoordinate(c1)
             dc = self.backend.TestFunction(c1._ad_function_space())
-            dc = self.backend.conj(dc)
         else:
             return None
 
         dform = self.backend.derivative(form, c1_rep, dc)
-        if not isinstance(c1, self.compat.MeshType):
-            dform = ufl.algorithms.map_integrands.map_integrands(self.backend.conj, dform)
+        dform = ufl.algorithms.map_integrands.map_integrands(self.backend.conj, dform)
         dform = ufl.algorithms.expand_derivatives(dform)
         hessian_outputs = hessian_input * self.compat.assemble_adjoint_value(dform)
 
+        dform = ufl.algorithms.apply_conjugate_coordinate_derivative_fusion(dform)
         ddform = 0
         for other_idx, bv in relevant_dependencies:
             c2_rep = bv.saved_output
